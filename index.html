@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Memo App - Table Update</title>
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app-container">
+    <aside id="sidebar-folders">
+        <div class="folder-header">
+            <span>메모</span>
+            <button class="btn-action" id="btn-theme-toggle" style="margin-left: auto; margin-right: 10px; font-size: 16px;">🌙</button>
+            <button class="btn-action" id="btn-help" style="margin-right: 10px; font-size: 16px;" title="사용 가이드">❓</button>
+            <button class="btn-action" id="btn-daily-note" style="margin-right: 10px;" title="오늘의 데일리 노트">📅</button>
+            <button class="btn-action" id="btn-add-note">📝 새 메모</button>
+        </div>
+        
+        <ul class="folder-list" id="folder-list"></ul>
+        
+        <div class="sidebar-section-title">태그</div>
+        <ul class="folder-list" id="tag-sidebar-list"></ul>
+
+        <div class="new-folder-btn" id="btn-new-folder">+ 새 폴더</div>
+
+        <ul class="folder-list" style="margin-top: auto; border-top: 1px solid var(--color-border);">
+            <li class="folder-item" id="trash-folder">🗑️ 휴지통</li>
+        </ul>
+    </aside>
+
+    <aside id="sidebar-notes">
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-input" placeholder="검색어 입력 (Ctrl+F)">
+            <div class="search-filters">
+                <label><input type="radio" name="search-filter" value="all" checked> 전체</label>
+                <label><input type="radio" name="search-filter" value="tag"> 태그</label>
+                <label><input type="radio" name="search-filter" value="content"> 내용</label>
+            </div>
+        </div>
+        <ul class="notes-list" id="notes-list"></ul>
+    </aside>
+
+    <main id="editor-area">
+        <div class="editor-top-bar">
+            <input type="text" class="note-title-input" id="note-title-input" readonly>
+            <span id="save-status" class="save-status"></span>
+            <button class="btn-action" id="btn-restore-note" style="display:none; margin-right: 10px;">♻️ 복구</button>
+            <button class="btn-action" id="btn-export-pdf" style="margin-right: 10px;">📄 PDF 저장</button>
+            <button class="btn-action btn-delete" id="btn-delete-note">삭제 (Del)</button>
+        </div>
+        <div id="editor-container">
+            <div id="editor"></div>
+            
+            <div id="tag-area">
+                <div id="tag-list"></div>
+                <input type="text" id="tag-input" placeholder="태그 입력...">
+            </div>
+
+            <div id="image-resize-tooltip">
+                <span>크기</span>
+                <input type="range" id="image-size-slider" min="10" max="100" value="100" step="5">
+                <span id="size-percentage">100%</span>
+            </div>
+        </div>
+
+        <div id="backlinks-area">
+            <h3>🔗 백링크 (이 메모를 참조하는 노트)</h3>
+            <ul class="backlink-list" id="backlinks-list"></ul>
+        </div>
+    </main>
+</div>
+
+<!-- 셀 배경색 선택을 위한 숨겨진 input -->
+<input type="color" id="color-picker" style="display:none">
+
+<!-- 표 우클릭 컨텍스트 메뉴 -->
+<div id="table-context-menu" class="context-menu">
+    <div data-action="insertRowAbove">행 추가 (위)</div>
+    <div data-action="insertRowBelow">행 추가 (아래)</div>
+    <div data-action="insertColumnLeft">열 추가 (왼쪽)</div>
+    <div data-action="insertColumnRight">열 추가 (오른쪽)</div>
+    <div class="separator"></div>
+    <div data-action="changeCellColor">셀 배경색...</div>
+    <div data-action="deleteRow" class="delete-item">행 삭제</div>
+    <div data-action="deleteColumn" class="delete-item">열 삭제</div>
+    <div data-action="deleteTable" class="delete-item">표 삭제</div>
+</div>
+
+<!-- 색상 팔레트 (자주 쓰는 색상 + 커스텀) -->
+<div id="color-palette" class="context-menu color-palette" style="display: none;">
+    <div class="color-swatch" style="background:#ffffff" data-color="#ffffff" title="기본(흰색)"></div>
+    <div class="color-swatch" style="background:#f5f5f7" data-color="#f5f5f7" title="연한 회색"></div>
+    <div class="color-swatch" style="background:#ffebee" data-color="#ffebee" title="연한 빨강"></div>
+    <div class="color-swatch" style="background:#fff3e0" data-color="#fff3e0" title="연한 주황"></div>
+    <div class="color-swatch" style="background:#fffde7" data-color="#fffde7" title="연한 노랑"></div>
+    <div class="color-swatch" style="background:#e8f5e9" data-color="#e8f5e9" title="연한 초록"></div>
+    <div class="color-swatch" style="background:#e3f2fd" data-color="#e3f2fd" title="연한 파랑"></div>
+    <div class="color-swatch" style="background:#f3e5f5" data-color="#f3e5f5" title="연한 보라"></div>
+    <div class="color-custom-btn" id="btn-custom-color">🌈 커스텀 색상...</div>
+</div>
+
+<!-- 도움말 모달 -->
+<div id="help-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💡 사용 가이드</h2>
+            <button class="btn-close-modal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="feature-section">
+                <h3>📝 기본 편집 기능</h3>
+                <ul>
+                    <li><b>텍스트 서식:</b> 툴바를 사용하여 굵게, 기울임, 밑줄, 하이라이트(배경색), 리스트 등을 적용할 수 있습니다.</li>
+                    <li><b>표(Table):</b> 표를 삽입하고 우클릭하여 행/열 추가, 삭제 및 셀 배경색을 변경할 수 있습니다.</li>
+                    <li><b>이미지:</b> 이미지를 드래그 앤 드롭하거나 버튼으로 삽입하고, 클릭하여 크기를 조절할 수 있습니다.</li>
+                    <li><b>접을 수 있는 섹션:</b> 제목(H1~H3) 왼쪽에 마우스를 올리면 나타나는 화살표(▼)를 클릭하여 내용을 접거나 펼칠 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="feature-section">
+                <h3>🔗 연결 및 고급 기능</h3>
+                <ul>
+                    <li><b>노트 링크:</b> <code>[[</code>를 입력하여 다른 메모를 검색하고 연결하세요. 생성된 링크를 클릭하면 해당 메모로 이동합니다.</li>
+                    <li><b>백링크(Backlinks):</b> 에디터 하단에서 현재 메모를 참조하고 있는 다른 메모 목록을 확인할 수 있습니다.</li>
+                    <li><b>태그 시스템:</b> <code>#태그</code>를 입력하여 태그를 생성하고, 사이드바에서 태그별로 메모를 필터링하세요.</li>
+                    <li><b>PDF 내보내기:</b> 작성한 메모를 A4 형식의 PDF 파일로 저장할 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="feature-section">
+                <h3>📅 관리 및 편의 기능</h3>
+                <ul>
+                    <li><b>데일리 노트:</b> 상단의 📅 버튼을 눌러 오늘 날짜의 메모를 즉시 생성하거나 엽니다.</li>
+                    <li><b>메모 고정:</b> 메모 리스트에서 우클릭하여 '상단 고정'을 선택하면 맨 위에 고정됩니다.</li>
+                    <li><b>다크 모드:</b> 🌙 버튼을 눌러 어두운 테마로 전환할 수 있습니다.</li>
+                    <li><b>폴더 관리:</b> 드래그 앤 드롭으로 메모를 폴더로 이동하거나 휴지통에 버릴 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="feature-section">
+                <h3>⌨️ 단축키 (Shortcuts)</h3>
+                <ul>
+                    <li><code>Ctrl + N</code> : 새 메모 작성</li>
+                    <li><code>Ctrl + S</code> : 메모 저장 (자동 저장됨)</li>
+                    <li><code>Ctrl + F</code> : 메모 검색창 포커스</li>
+                    <li><code>Delete</code> : 선택된 메모 삭제 (리스트에서)</li>
+                    <li><code>Ctrl + Click</code> : 외부 링크 새 탭 열기</li>
+                    <li><code>Space</code> : URL 입력 후 누르면 자동 링크 변환</li>
+                    <li><code>Ctrl + K</code> : 링크 삽입</li>
+                    <li><code>Ctrl + Z</code> : 실행 취소 / <code>Ctrl + Y</code> : 다시 실행</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

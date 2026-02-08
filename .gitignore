@@ -1,0 +1,19 @@
+# Node.js dependencies
+node_modules
+dist
+build
+
+# Rust / Tauri build artifacts (Huge size!)
+src-tauri/target
+target
+**/*.rs.bk
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode
+.idea
+*.swp
+*.swo
